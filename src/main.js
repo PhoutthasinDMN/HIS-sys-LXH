@@ -1095,45 +1095,45 @@ window.exportDashboardPDF = function () {
 
     setTimeout(() => {
       const opt = {
-        margin: 0, // Fill the page width completely
+        margin: 0, 
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
-          scale: 2.5, // 2.5x scale is plenty for high-res A4
+          scale: 2.5, 
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1400, // Forces full desktop layout
+          windowWidth: 1400, 
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
             if (captureEl) {
-              // 1. Create a 1400px centering parent wrapper
-              const wrapper = clonedDoc.createElement('div');
-              wrapper.style.width = '1400px';
-              wrapper.style.display = 'flex';
-              wrapper.style.justifyContent = 'center';
-              wrapper.style.backgroundColor = '#fff';
-              wrapper.style.padding = '10px 0';
+              // 1. Use prepend to body for isolation (avoid innerHTML = '' bugs)
+              clonedDoc.body.prepend(captureEl);
               
-              // 2. Configure capture element to be 1300px wide
-              captureEl.style.width = '1300px';
-              captureEl.style.margin = '0';
-              captureEl.style.padding = '0';
-              
-              // 3. Reconstruct body
-              wrapper.appendChild(captureEl);
-              clonedDoc.body.innerHTML = '';
-              clonedDoc.body.appendChild(wrapper);
+              // 2. Hide all siblings to ensure ONLY the dashboard is rendered
+              Array.from(clonedDoc.body.children).forEach(child => {
+                if (child !== captureEl) child.style.display = 'none';
+              });
+
+              // 3. Set the Body to a fixed 1400px to define the canvas plane
+              clonedDoc.body.style.width = '1400px';
               clonedDoc.body.style.margin = '0';
               clonedDoc.body.style.padding = '0';
+              clonedDoc.body.style.backgroundColor = '#fff';
               
-              // 4. Manual page-break after row 3 (index 2)
+              // 4. Center the 1300px Dashboard inside the 1400px plane
+              captureEl.style.display = 'block';
+              captureEl.style.margin = '0 auto';
+              captureEl.style.width = '1300px';
+              captureEl.style.padding = '0';
+              
+              // 5. Inject manual page-break after row 3 (index 2)
               const rows = captureEl.querySelectorAll('.row');
               if (rows.length > 2) {
                 let pb = clonedDoc.createElement('div');
                 pb.className = 'html2pdf__page-break';
-                rows[2].after(pb);
+                rows[2].parentNode.insertBefore(pb, rows[2].nextSibling);
               }
             }
           }
