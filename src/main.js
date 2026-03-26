@@ -1095,7 +1095,7 @@ window.exportDashboardPDF = function () {
 
     setTimeout(() => {
       const opt = {
-        margin: [5, 0, 5, 0], // Small top/bottom margin, 0 side margin
+        margin: [2, 0, 2, 0], // Minimal top/bottom margin, 0 side margin for edge-to-edge
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
@@ -1103,7 +1103,7 @@ window.exportDashboardPDF = function () {
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1350,
+          windowWidth: 1120, // Synchronized with CSS 1120px
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
@@ -1113,7 +1113,7 @@ window.exportDashboardPDF = function () {
               clonedDoc.body.style.margin = '0';
               clonedDoc.body.style.padding = '0';
               captureEl.style.setProperty('margin', '0 auto', 'important');
-              captureEl.style.setProperty('padding', '0 30px', 'important');
+              captureEl.style.setProperty('padding', '0', 'important'); // Zero padding for edge-to-edge
               
               // 3. Inject explicit manual page-break after the 3rd row (index 2)
               const rows = captureEl.querySelectorAll('.row');

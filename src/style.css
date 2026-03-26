@@ -88,10 +88,10 @@ body.exporting-pdf {
     position: static !important;
     display: block !important;
     margin: 0 auto !important;
-    width: 1350px !important;
+    width: 1120px !important; /* True A4 Landscape Pixel Width (96dpi) */
     height: auto !important;
     max-width: none !important;
-    padding: 0 30px !important; /* Fixed padding for Bootstrap encapsulation */
+    padding: 0 !important; /* Edge to edge */
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
@@ -103,27 +103,27 @@ body.exporting-pdf {
     margin-bottom: 10px !important;
   }
   
-  /* Row 1 & 2: Top 8, Revenue, Specialists (Total ~310px each) */
+  /* Row 1 & 2: Top 8, Revenue, Specialists (Total ~300px each) */
   .pdf-export-mode .row:nth-child(2) .card,
   .pdf-export-mode .row:nth-child(3) .card {
-    height: 310px !important;
+    height: 300px !important;
     overflow: hidden !important;
   }
   .pdf-export-mode .row:nth-child(2) .card-body,
   .pdf-export-mode .row:nth-child(3) .card-body {
-    height: 270px !important;
-    min-height: 270px !important;
+    height: 260px !important;
+    min-height: 260px !important;
     padding: 5px 10px !important;
   }
 
-  /* Row 3: Gender, Type, Site (Total ~220px each) */
+  /* Row 3: Gender, Type, Site (Total ~200px each) */
   .pdf-export-mode .row:nth-child(4) .card {
-    height: 220px !important;
+    height: 200px !important;
     overflow: hidden !important;
   }
   .pdf-export-mode .row:nth-child(4) .card-body {
-    height: 190px !important;
-    min-height: 190px !important;
+    height: 170px !important;
+    min-height: 170px !important;
     padding: 2px 8px !important;
   }
 
