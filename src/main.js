@@ -1094,23 +1094,8 @@ window.exportDashboardPDF = function () {
     element.classList.add('pdf-export-mode');
 
     setTimeout(() => {
-      // Calculate exactly where the slice needs to happen (Bottom of 3rd row)
-      const rows = element.querySelectorAll('.row');
-      let optimalPageHeight = 1050; // Safe default
-      
-      if (rows.length > 2) {
-        // Measure pixel-perfect relative distance from the top of the print container
-        // This ignores any live DOM headers/navbars completely
-        const rowRect = rows[2].getBoundingClientRect();
-        const parentRect = element.getBoundingClientRect();
-        const relativeBottom = rowRect.bottom - parentRect.top;
-        
-        // Add 15px to slice perfectly into the whitespace below the 3rd row
-        optimalPageHeight = relativeBottom + 15;
-      }
-
       const opt = {
-        margin: 0, // Zero margin lets PDF exactly map 1:1 to canvas pixels
+        margin: [5, 0, 5, 0], // Small top/bottom margin, 0 side margin
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
@@ -1127,15 +1112,22 @@ window.exportDashboardPDF = function () {
               clonedDoc.body.style.display = 'block';
               clonedDoc.body.style.margin = '0';
               clonedDoc.body.style.padding = '0';
-              // Add physical vertical AND horizontal padding to the canvas wrapper
-              // horizontal padding (20px) prevents Bootstrap .row negative margins from cropping
-              captureEl.style.setProperty('padding', '25px 20px', 'important');
               captureEl.style.setProperty('margin', '0 auto', 'important');
-              captureEl.style.setProperty('box-sizing', 'border-box', 'important');
+              captureEl.style.setProperty('padding', '0 30px', 'important');
+              
+              // 3. Inject explicit manual page-break after the 3rd row (index 2)
+              const rows = captureEl.querySelectorAll('.row');
+              if (rows.length > 2) {
+                let pb = clonedDoc.createElement('div');
+                pb.className = 'html2pdf__page-break';
+                pb.style.height = '1px';
+                rows[2].after(pb);
+              }
             }
           }
         },
-        jsPDF: { unit: 'px', format: [1350, optimalPageHeight], orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'] }
       };
       
       html2pdf().set(opt).from(element).save().then(() => {
