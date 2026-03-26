@@ -56,21 +56,26 @@ body.exporting-pdf {
     padding: 0 !important;
     margin: 0 !important;
     height: auto !important;
-    width: 1200px !important; /* Golden Desktop Width for PDF Export */
+    width: 1300px !important; /* Fixed 1300px capture plane */
     background: #fff !important;
     display: block !important;
 }
-body.exporting-pdf .wrapper,
-body.exporting-pdf .content-wrapper,
-body.exporting-pdf #app-content,
-body.exporting-pdf .his-content-wrapper {
+
+/* Ensure ALL outer wrappers collapse or display block to allow the dashboard to be at the top */
+body.exporting-pdf .wrapper, 
+body.exporting-pdf .content-wrapper, 
+body.exporting-pdf #app-content, 
+body.exporting-pdf .his-content-wrapper,
+body.exporting-pdf .content {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     display: block !important;
     overflow: visible !important;
     position: static !important;
+    min-height: auto !important;
 }
+
   body.exporting-pdf .main-header,
   body.exporting-pdf .main-sidebar,
   body.exporting-pdf .main-footer,
@@ -95,18 +100,21 @@ body.exporting-pdf .his-content-wrapper {
     width: 100% !important;
   }
 
-  /* 3. The Print Target */
-  #view-dashboard.pdf-export-mode {
-    position: static !important;
+  /* 3. The Print Target - Zero Interference Mode */
+  #dashboardPrintArea.pdf-export-mode {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
     display: block !important;
     margin: 0 auto !important;
-    width: 100% !important;
+    width: 1200px !important; /* Golden Desktop Width */
     height: auto !important;
     max-width: none !important;
-    padding: 5px 30px !important; /* 30px horizontal buffer to prevent cropping */
+    padding: 10px 40px !important; /* 40px horizontal buffer to prevent cropping */
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
+    z-index: 9999 !important;
   }
   
   /* 4. Perfect 2-Page Condensation Geometry (Gently squeezing the height) */

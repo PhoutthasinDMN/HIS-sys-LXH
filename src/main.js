@@ -1099,24 +1099,17 @@ window.exportDashboardPDF = function () {
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
-          scale: 2, // 2x is plenty for A4 and more stable
+          scale: 2, 
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1200, 
+          windowWidth: 1300, 
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
             if (captureEl) {
-              // 1. Isolation: Move to top of body to avoid deep parent clipping
-              clonedDoc.body.prepend(captureEl);
-              
-              // 2. Hide all other siblings (Safer than innerHTML = '' to preserve <style> tags)
-              Array.from(clonedDoc.body.children).forEach(child => {
-                if (child !== captureEl) child.style.display = 'none';
-              });
-
-              // 3. Inject manual page-break after row 3 (index 2)
+              // 1. Surgical Injection Only (Zero Interference)
+              // Leaving the element in-place preserves 100% of CSS inheritance.
               const rows = captureEl.querySelectorAll('.row');
               if (rows.length > 2) {
                 let pb = clonedDoc.createElement('div');
