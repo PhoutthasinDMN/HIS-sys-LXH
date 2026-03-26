@@ -1094,19 +1094,23 @@ window.exportDashboardPDF = function () {
     element.classList.add('pdf-export-mode');
 
     setTimeout(() => {
-      // 3. Inject explicit manual page-break immediately after Row 3 
-      //    (to prevent html2pdf splitting pie charts in half)
+      // Calculate exactly where the slice needs to happen (Bottom of 3rd row)
       const rows = element.querySelectorAll('.row');
-      let pb = document.createElement('div');
-      pb.classList.add('html2pdf__page-break');
-      pb.id = 'manual-dashboard-pb';
-      pb.style.pageBreakBefore = 'always';
+      let optimalPageHeight = 1050; // Safe default
+      
       if (rows.length > 2) {
-        rows[2].after(pb);
+        // Measure pixel-perfect relative distance from the top of the print container
+        // This ignores any live DOM headers/navbars completely
+        const rowRect = rows[2].getBoundingClientRect();
+        const parentRect = element.getBoundingClientRect();
+        const relativeBottom = rowRect.bottom - parentRect.top;
+        
+        // Add 15px to slice perfectly into the whitespace below the 3rd row
+        optimalPageHeight = relativeBottom + 15;
       }
 
       const opt = {
-        margin: [5, 5, 5, 5], 
+        margin: 0, // Zero margin lets PDF exactly map 1:1 to canvas pixels
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
@@ -1123,13 +1127,15 @@ window.exportDashboardPDF = function () {
               clonedDoc.body.style.display = 'block';
               clonedDoc.body.style.margin = '0';
               clonedDoc.body.style.padding = '0';
+              // Add physical vertical AND horizontal padding to the canvas wrapper
+              // horizontal padding (20px) prevents Bootstrap .row negative margins from cropping
+              captureEl.style.setProperty('padding', '25px 20px', 'important');
               captureEl.style.setProperty('margin', '0 auto', 'important');
-              captureEl.style.setProperty('padding', '2px 5px', 'important');
+              captureEl.style.setProperty('box-sizing', 'border-box', 'important');
             }
           }
         },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak: { mode: ['css', 'legacy'] }
+        jsPDF: { unit: 'px', format: [1350, optimalPageHeight], orientation: 'landscape' }
       };
       
       html2pdf().set(opt).from(element).save().then(() => {
