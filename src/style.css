@@ -100,7 +100,7 @@ body.exporting-pdf .content {
     width: 100% !important;
   }
 
-  /* 3. The Print Target - Zero Interference Mode with 20px Safe-Zone */
+  /* 3. The Print Target - Zero Interference Mode with Final Balance Alignment */
   #dashboardPrintArea.pdf-export-mode {
     position: relative !important;
     top: 0 !important;
@@ -110,7 +110,7 @@ body.exporting-pdf .content {
     width: 100% !important;
     height: auto !important;
     max-width: none !important;
-    padding: 10px 20px !important; /* 20px buffer for perfect horizontal balance */
+    padding: 10px 35px 10px 5px !important; /* Shifting left: 5px left, 35px right buffer */
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
