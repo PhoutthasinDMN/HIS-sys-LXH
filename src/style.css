@@ -56,7 +56,7 @@ body.exporting-pdf {
     padding: 0 !important;
     margin: 0 !important;
     height: auto !important;
-    width: 1300px !important; /* Unified 1300px Plane for Synchronized Capture */
+    width: 1220px !important; /* Tight 1220px Plane for Balanced Centering */
     background: #fff !important;
     display: block !important;
 }
@@ -100,7 +100,7 @@ body.exporting-pdf .content {
     width: 100% !important;
   }
 
-  /* 3. The Print Target - Zero Interference Mode with 60px Safe-Zone */
+  /* 3. The Print Target - Zero Interference Mode with 20px Safe-Zone */
   #dashboardPrintArea.pdf-export-mode {
     position: relative !important;
     top: 0 !important;
@@ -110,7 +110,7 @@ body.exporting-pdf .content {
     width: 100% !important;
     height: auto !important;
     max-width: none !important;
-    padding: 15px 60px !important; /* 60px Safe Zone to prevent edge clipping */
+    padding: 10px 20px !important; /* 20px buffer for perfect horizontal balance */
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
