@@ -1095,7 +1095,7 @@ window.exportDashboardPDF = function () {
 
     setTimeout(() => {
       const opt = {
-        margin: 0, 
+        margin: 5, 
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
@@ -1108,27 +1108,10 @@ window.exportDashboardPDF = function () {
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
             if (captureEl) {
-              // 1. Use prepend to body for isolation (avoid innerHTML = '' bugs)
+              // 1. Move to top for best capture context
               clonedDoc.body.prepend(captureEl);
               
-              // 2. Hide all siblings to ensure ONLY the dashboard is rendered
-              Array.from(clonedDoc.body.children).forEach(child => {
-                if (child !== captureEl) child.style.display = 'none';
-              });
-
-              // 3. Set the Body to a fixed 1400px to define the canvas plane
-              clonedDoc.body.style.width = '1400px';
-              clonedDoc.body.style.margin = '0';
-              clonedDoc.body.style.padding = '0';
-              clonedDoc.body.style.backgroundColor = '#fff';
-              
-              // 4. Center the 1300px Dashboard inside the 1400px plane
-              captureEl.style.display = 'block';
-              captureEl.style.margin = '0 auto';
-              captureEl.style.width = '1300px';
-              captureEl.style.padding = '0';
-              
-              // 5. Inject manual page-break after row 3 (index 2)
+              // 2. Inject manual page-break after row 3 (index 2)
               const rows = captureEl.querySelectorAll('.row');
               if (rows.length > 2) {
                 let pb = clonedDoc.createElement('div');

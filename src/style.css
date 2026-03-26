@@ -56,9 +56,18 @@ body.exporting-pdf {
     padding: 0 !important;
     margin: 0 !important;
     height: auto !important;
-    width: 100% !important;
+    width: 1400px !important; /* Fixed 1400px capture plane */
     background: #fff !important;
-  }
+    display: block !important;
+}
+body.exporting-pdf .wrapper,
+body.exporting-pdf .content-wrapper,
+body.exporting-pdf #app-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    display: block !important;
+}
   body.exporting-pdf .main-header,
   body.exporting-pdf .main-sidebar,
   body.exporting-pdf .main-footer,
@@ -84,14 +93,14 @@ body.exporting-pdf {
   }
 
   /* 3. The Print Target */
-  .pdf-export-mode {
+  #view-dashboard.pdf-export-mode {
     position: static !important;
     display: block !important;
     margin: 0 auto !important;
-    width: 1300px !important; /* Fixed width for consistent horizontal centering */
+    width: 1300px !important; /* Centered 1300px dashboard */
     height: auto !important;
     max-width: none !important;
-    padding: 10px 0 !important; /* Top/bottom padding, no horizontal */
+    padding: 20px 0 !important;
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
