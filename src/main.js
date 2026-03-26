@@ -1095,15 +1095,15 @@ window.exportDashboardPDF = function () {
 
     setTimeout(() => {
       const opt = {
-        margin: 5, 
+        margin: 0, 
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
-          scale: 2.5, 
+          scale: 3, 
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1400, 
+          windowWidth: 1122, // Synchronized with "Perfect A4" CSS width
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');

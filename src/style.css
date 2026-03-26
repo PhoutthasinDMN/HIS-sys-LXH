@@ -56,7 +56,7 @@ body.exporting-pdf {
     padding: 0 !important;
     margin: 0 !important;
     height: auto !important;
-    width: 1400px !important; /* Fixed 1400px capture plane */
+    width: 1122px !important; /* Perfect A4 Landscape Pixel Width (96dpi) */
     background: #fff !important;
     display: block !important;
 }
@@ -96,11 +96,11 @@ body.exporting-pdf #app-content {
   #view-dashboard.pdf-export-mode {
     position: static !important;
     display: block !important;
-    margin: 0 auto !important;
-    width: 1300px !important; /* Centered 1300px dashboard */
+    margin: 0 !important;
+    width: 100% !important;
     height: auto !important;
     max-width: none !important;
-    padding: 20px 0 !important;
+    padding: 5px 20px !important;
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
@@ -112,40 +112,40 @@ body.exporting-pdf #app-content {
     margin-bottom: 10px !important;
   }
   
-  /* Row 1 & 2: Top 8, Revenue, Specialists (Total ~300px each) */
+  /* Row 1 & 2: Top 8, Revenue, Specialists (Total ~285px each) */
   .pdf-export-mode .row:nth-child(2) .card,
   .pdf-export-mode .row:nth-child(3) .card {
-    height: 300px !important;
+    height: 285px !important;
     overflow: hidden !important;
   }
   .pdf-export-mode .row:nth-child(2) .card-body,
   .pdf-export-mode .row:nth-child(3) .card-body {
-    height: 260px !important;
-    min-height: 260px !important;
+    height: 245px !important;
+    min-height: 245px !important;
     padding: 5px 10px !important;
   }
 
-  /* Row 3: Gender, Type, Site (Total ~200px each) */
+  /* Row 3: Gender, Type, Site (Total ~205px each) */
   .pdf-export-mode .row:nth-child(4) .card {
-    height: 200px !important;
+    height: 205px !important;
     overflow: hidden !important;
   }
   .pdf-export-mode .row:nth-child(4) .card-body {
-    height: 170px !important;
-    min-height: 170px !important;
+    height: 175px !important;
+    min-height: 175px !important;
     padding: 2px 8px !important;
   }
 
   /* Row 4 & 5: Time Slot, Age Group, Province, Marketing */
   .pdf-export-mode .row:nth-child(5) .card,
   .pdf-export-mode .row:nth-child(6) .card {
-    height: 250px !important;
+    height: 235px !important;
     overflow: hidden !important;
   }
   .pdf-export-mode .row:nth-child(5) .card-body,
   .pdf-export-mode .row:nth-child(6) .card-body {
-    height: 210px !important;
-    min-height: 210px !important;
+    height: 195px !important;
+    min-height: 195px !important;
     padding: 5px 10px !important;
   }
   
