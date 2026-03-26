@@ -1103,7 +1103,8 @@ window.exportDashboardPDF = function () {
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1350, 
+          x: 0, 
+          windowWidth: 1300, 
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
