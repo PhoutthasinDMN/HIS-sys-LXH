@@ -1099,28 +1099,25 @@ window.exportDashboardPDF = function () {
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
-          scale: 3, 
+          scale: 2, // 2x is plenty for A4 and more stable
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1200, // Golden Desktop Width
+          windowWidth: 1200, 
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
             if (captureEl) {
-              // 1. Pure Isolation: Clone the element into a fresh body
-              const dashboardClean = captureEl.cloneNode(true);
-              clonedDoc.body.innerHTML = '';
-              clonedDoc.body.appendChild(dashboardClean);
+              // 1. Isolation: Move to top of body to avoid deep parent clipping
+              clonedDoc.body.prepend(captureEl);
               
-              // 2. Force the 1200px Plane for edge-to-edge mapping
-              clonedDoc.body.style.width = '1200px';
-              clonedDoc.body.style.margin = '0';
-              clonedDoc.body.style.padding = '0';
-              clonedDoc.body.style.backgroundColor = '#fff';
-              
+              // 2. Hide all other siblings (Safer than innerHTML = '' to preserve <style> tags)
+              Array.from(clonedDoc.body.children).forEach(child => {
+                if (child !== captureEl) child.style.display = 'none';
+              });
+
               // 3. Inject manual page-break after row 3 (index 2)
-              const rows = dashboardClean.querySelectorAll('.row');
+              const rows = captureEl.querySelectorAll('.row');
               if (rows.length > 2) {
                 let pb = clonedDoc.createElement('div');
                 pb.className = 'html2pdf__page-break';

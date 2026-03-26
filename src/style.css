@@ -62,12 +62,14 @@ body.exporting-pdf {
 }
 body.exporting-pdf .wrapper,
 body.exporting-pdf .content-wrapper,
-body.exporting-pdf #app-content {
+body.exporting-pdf #app-content,
+body.exporting-pdf .his-content-wrapper {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     display: block !important;
     overflow: visible !important;
+    position: static !important;
 }
   body.exporting-pdf .main-header,
   body.exporting-pdf .main-sidebar,
@@ -113,16 +115,16 @@ body.exporting-pdf #app-content {
     margin-bottom: 10px !important;
   }
   
-  /* Row 1 & 2: Top 8, Revenue, Specialists (Total ~270px each) */
+  /* Row 1 & 2: Top 8, Revenue, Specialists (Total ~260px each) */
   .pdf-export-mode .row:nth-child(2) .card,
   .pdf-export-mode .row:nth-child(3) .card {
-    height: 270px !important;
+    height: 260px !important;
     overflow: hidden !important;
   }
   .pdf-export-mode .row:nth-child(2) .card-body,
   .pdf-export-mode .row:nth-child(3) .card-body {
-    height: 230px !important;
-    min-height: 230px !important;
+    height: 220px !important;
+    min-height: 220px !important;
     padding: 5px 10px !important;
   }
 
