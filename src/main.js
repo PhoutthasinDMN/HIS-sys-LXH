@@ -1095,32 +1095,44 @@ window.exportDashboardPDF = function () {
 
     setTimeout(() => {
       const opt = {
-        margin: [2, 0, 2, 0], // Minimal top/bottom margin, 0 side margin for edge-to-edge
+        margin: 0, // Fill the page width completely
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
-          scale: 3, 
+          scale: 2.5, // 2.5x scale is plenty for high-res A4
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1120, // Synchronized with CSS 1120px
+          windowWidth: 1400, // Forces full desktop layout
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');
             if (captureEl) {
-              clonedDoc.body.prepend(captureEl);
-              clonedDoc.body.style.display = 'block';
+              // 1. Create a 1400px centering parent wrapper
+              const wrapper = clonedDoc.createElement('div');
+              wrapper.style.width = '1400px';
+              wrapper.style.display = 'flex';
+              wrapper.style.justifyContent = 'center';
+              wrapper.style.backgroundColor = '#fff';
+              wrapper.style.padding = '10px 0';
+              
+              // 2. Configure capture element to be 1300px wide
+              captureEl.style.width = '1300px';
+              captureEl.style.margin = '0';
+              captureEl.style.padding = '0';
+              
+              // 3. Reconstruct body
+              wrapper.appendChild(captureEl);
+              clonedDoc.body.innerHTML = '';
+              clonedDoc.body.appendChild(wrapper);
               clonedDoc.body.style.margin = '0';
               clonedDoc.body.style.padding = '0';
-              captureEl.style.setProperty('margin', '0 auto', 'important');
-              captureEl.style.setProperty('padding', '0', 'important'); // Zero padding for edge-to-edge
               
-              // 3. Inject explicit manual page-break after the 3rd row (index 2)
+              // 4. Manual page-break after row 3 (index 2)
               const rows = captureEl.querySelectorAll('.row');
               if (rows.length > 2) {
                 let pb = clonedDoc.createElement('div');
                 pb.className = 'html2pdf__page-break';
-                pb.style.height = '1px';
                 rows[2].after(pb);
               }
             }

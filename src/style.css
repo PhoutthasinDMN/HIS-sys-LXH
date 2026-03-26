@@ -88,10 +88,10 @@ body.exporting-pdf {
     position: static !important;
     display: block !important;
     margin: 0 auto !important;
-    width: 1120px !important; /* True A4 Landscape Pixel Width (96dpi) */
+    width: 1300px !important; /* Fixed width for consistent horizontal centering */
     height: auto !important;
     max-width: none !important;
-    padding: 0 !important; /* Edge to edge */
+    padding: 10px 0 !important; /* Top/bottom padding, no horizontal */
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
