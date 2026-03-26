@@ -1,3 +1,4 @@
+/* HIS System Dashboard Optimization - Version 1.2.1 - [FIX: 4BOX-PDF-CENTER] */
 import { defineConfig } from 'vite'
 
 export default defineConfig({
