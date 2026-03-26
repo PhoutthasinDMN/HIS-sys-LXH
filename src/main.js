@@ -1099,11 +1099,11 @@ window.exportDashboardPDF = function () {
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
-          scale: 2, 
+          scale: 2.5, 
           useCORS: true, 
           scrollY: 0, 
           y: 0,
-          windowWidth: 1300, 
+          windowWidth: 1350, 
           logging: false,
           onclone: (clonedDoc) => {
             const captureEl = clonedDoc.getElementById('dashboardPrintArea');

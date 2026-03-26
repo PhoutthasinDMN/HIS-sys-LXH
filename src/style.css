@@ -107,14 +107,24 @@ body.exporting-pdf .content {
     left: 0 !important;
     display: block !important;
     margin: 0 auto !important;
-    width: 1200px !important; /* Golden Desktop Width */
+    width: 1250px !important; /* Slightly narrower for 4-box safety */
     height: auto !important;
     max-width: none !important;
-    padding: 10px 40px !important; /* 40px horizontal buffer to prevent cropping */
+    padding: 10px 25px !important;
     background: #fff !important;
     box-sizing: border-box !important;
     transform: none !important;
     z-index: 9999 !important;
+  }
+
+  /* Force 4 boxes in Row 1 (Summary boxes) */
+  .pdf-export-mode .row:nth-child(1) > div {
+    flex: 0 0 25% !important;
+    max-width: 25% !important;
+  }
+  .pdf-export-mode .small-box {
+    margin-bottom: 5px !important;
+    height: 100px !important; /* Compact height for Page 1 fit */
   }
   
   /* 4. Perfect 2-Page Condensation Geometry (Gently squeezing the height) */
