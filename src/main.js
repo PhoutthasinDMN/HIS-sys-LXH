@@ -1093,25 +1093,20 @@ window.exportDashboardPDF = function () {
     document.body.classList.add('exporting-pdf');
     element.classList.add('pdf-export-mode');
 
-    // 2. Reflow Wait (500ms): Ensuring the browser has physically collapsed headers
     setTimeout(() => {
-      // Calculate exactly where the slice needs to happen (Bottom of 3rd row)
+      // 3. Inject explicit manual page-break immediately after Row 3 
+      //    (to prevent html2pdf splitting pie charts in half)
       const rows = element.querySelectorAll('.row');
-      let optimalPageHeight = 1050; // Safe default
-      
+      let pb = document.createElement('div');
+      pb.classList.add('html2pdf__page-break');
+      pb.id = 'manual-dashboard-pb';
+      pb.style.pageBreakBefore = 'always';
       if (rows.length > 2) {
-        // Measure pixel-perfect relative distance from the top of the print container
-        // This ignores any live DOM headers/navbars
-        const rowRect = rows[2].getBoundingClientRect();
-        const parentRect = element.getBoundingClientRect();
-        const relativeBottom = rowRect.bottom - parentRect.top;
-        
-        // Add 15px to slice perfectly into the whitespace below the 3rd row
-        optimalPageHeight = relativeBottom + 15;
+        rows[2].after(pb);
       }
 
       const opt = {
-        margin: 0, // Zero margin lets PDF exactly map 1:1 to canvas pixels
+        margin: [5, 5, 5, 5], 
         filename: 'HIS_Dashboard.pdf', 
         image: { type: 'jpeg', quality: 1.0 },
         html2canvas: { 
@@ -1128,13 +1123,13 @@ window.exportDashboardPDF = function () {
               clonedDoc.body.style.display = 'block';
               clonedDoc.body.style.margin = '0';
               clonedDoc.body.style.padding = '0';
-              // Add physical padding directly to the canvas wrapper to replace jsPDF margin
-              captureEl.style.setProperty('padding', '25px 0', 'important');
               captureEl.style.setProperty('margin', '0 auto', 'important');
+              captureEl.style.setProperty('padding', '2px 5px', 'important');
             }
           }
         },
-        jsPDF: { unit: 'px', format: [1350, optimalPageHeight], orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'] }
       };
       
       html2pdf().set(opt).from(element).save().then(() => {
