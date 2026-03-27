@@ -8,6 +8,14 @@ const supabaseClient = supabase.createClient(
 );
 console.log("Supabase Client:", supabaseClient);
 
+// Helper to get UTC ISO string for a local date boundary (GMT+7 aware)
+window.getUTCBoundary = function(dateStr, isEnd) {
+  if (!dateStr) return null;
+  const time = isEnd ? '23:59:59' : '00:00:00';
+  const localDate = new Date(dateStr + 'T' + time);
+  return localDate.toISOString();
+};
+
 let currentUser = null;
 let masterDataStore = {};
 let queueDataStore = [];
@@ -401,29 +409,73 @@ window.initApp = async function () {
     // 1. Seed Defaults First (Await completion)
     await window.seedMasterDefaults();
 
-    // 2. Fetch all other data in parallel
+    // 2. Fetch all other data in parallel with proper pagination
     await Promise.all([
-      supabaseClient.from('MasterData').select('ID,Category,Value').order('Category').then(({ data }) => {
+      // MasterData
+      (async () => {
+        let allMaster = [];
+        let start = 0;
+        while (true) {
+          const { data, error } = await supabaseClient.from('MasterData').select('ID,Category,Value').order('Category').range(start, start + 999);
+          if (error) break;
+          if (!data || data.length === 0) break;
+          allMaster = allMaster.concat(data);
+          if (data.length < 1000) break;
+          start += 1000;
+        }
         const map = {};
-        (data || []).forEach(r => { if (!map[r.Category]) map[r.Category] = []; map[r.Category].push({ id: r.ID, value: r.Value }); });
+        allMaster.forEach(r => { if (!map[r.Category]) map[r.Category] = []; map[r.Category].push({ id: r.ID, value: r.Value }); });
         window.loadMasterDataGlobalCallback(map);
-      }),
-      supabaseClient.from('Service_Lists').select('*').order('ID').then(({ data }) => {
-        servicesDataStore = (data || []).map(r => ({ id: r.ID, revenue: r.Revenue_Group, specialist: r.Mapped_Specialist, service: r.Services_List }));
+      })(),
+      // Service_Lists
+      (async () => {
+        let allServices = [];
+        let start = 0;
+        while (true) {
+          const { data, error } = await supabaseClient.from('Service_Lists').select('*').order('ID').range(start, start + 999);
+          if (error) break;
+          if (!data || data.length === 0) break;
+          allServices = allServices.concat(data);
+          if (data.length < 1000) break;
+          start += 1000;
+        }
+        servicesDataStore = allServices.map(r => ({ id: r.ID, revenue: r.Revenue_Group, specialist: r.Mapped_Specialist, service: r.Services_List }));
         let so = '';
         servicesDataStore.forEach(s => { so += `<option value="${s.service}">${s.service}</option>`; });
         if (typeof jQuery !== 'undefined') $('#emrService').empty().append(so).trigger('change');
-      }),
-      supabaseClient.from('Locations').select('*').order('Province').then(({ data }) => {
-        locationsDataStore = (data || []).map(r => ({ id: r.ID, district: r.District, province: r.Province }));
+      })(),
+      // Locations
+      (async () => {
+        let allLocs = [];
+        let start = 0;
+        while (true) {
+          const { data, error } = await supabaseClient.from('Locations').select('*').order('Province').range(start, start + 999);
+          if (error) break;
+          if (!data || data.length === 0) break;
+          allLocs = allLocs.concat(data);
+          if (data.length < 1000) break;
+          start += 1000;
+        }
+        locationsDataStore = allLocs.map(r => ({ id: r.ID, district: r.District, province: r.Province }));
         let o = '<option value="">-- ຄົ້ນຫາ ແລະ ເລືອກເມືອງ --</option>';
         locationsDataStore.forEach(l => o += `<option value="${l.district}">${l.district}</option>`);
         if (typeof jQuery !== 'undefined') $('#p_district').html(o);
-      }),
-      supabaseClient.from('Organizations').select('*').eq('Status', 'Active').then(({ data }) => {
+      })(),
+      // Organizations
+      (async () => {
+        let allOrgs = [];
+        let start = 0;
+        while (true) {
+          const { data, error } = await supabaseClient.from('Organizations').select('*').eq('Status', 'Active').range(start, start + 999);
+          if (error) break;
+          if (!data || data.length === 0) break;
+          allOrgs = allOrgs.concat(data);
+          if (data.length < 1000) break;
+          start += 1000;
+        }
         let orgOptions = '<option value="">-- ເລືອກອົງກອນ --</option>';
         let seenOpts = new Set();
-        (data || []).forEach(org => {
+        allOrgs.forEach(org => {
           if (org.Org_Code && !seenOpts.has(org.Org_Code)) {
             seenOpts.add(org.Org_Code);
             orgOptions += `<option value="${org.Org_Code}">${org.Org_Code} - ${org.Org_Name}</option>`;
@@ -432,7 +484,7 @@ window.initApp = async function () {
         if (typeof jQuery !== 'undefined') {
           $('#p_org_id').html(orgOptions).select2({ dropdownParent: $('#patientModal'), placeholder: "-- ເລືອກອົງກອນ --", allowClear: true });
         }
-      }),
+      })(),
       new Promise((resolve) => { window.preloadDropdownDataCallback(resolve); })
     ]);
 
@@ -629,7 +681,7 @@ window.executePrint = function (containerId) {
 };
 
 window.checkAlerts = async function () {
-  const today = new Date().toISOString().split('T')[0];
+  const today = window.getLocalStr(new Date());
   const futureDate = new Date();
   futureDate.setDate(futureDate.getDate() + 14);
   const futureDateStr = futureDate.toISOString().split('T')[0];
@@ -696,12 +748,25 @@ window.renderNotifications = function () { window.checkAlerts(); };
 
 window.preloadDropdownDataCallback = function (resolve) {
   let promises = [
-    supabaseClient.from('Patients').select('Patient_ID,First_Name,Last_Name').order('Patient_ID', { ascending: false }).then(({ data }) => {
-      allPatientsList = (data || []).map(p => ({ id: p.Patient_ID, fullname: `${p.First_Name || ''} ${p.Last_Name || ''}`.trim() }));
+    (async () => {
+      let ps = [];
+      let pStart = 0;
+      while (true) {
+        const { data: chunk, error } = await supabaseClient.from('Patients')
+          .select('Patient_ID,First_Name,Last_Name')
+          .order('Patient_ID', { ascending: false })
+          .range(pStart, pStart + 999);
+        if (error || !chunk || chunk.length === 0) break;
+        ps = ps.concat(chunk);
+        if (chunk.length < 1000) break;
+        pStart += 1000;
+        if (ps.length > 50000) break; // Hard safety cap
+      }
+      allPatientsList = ps.map(p => ({ id: p.Patient_ID, fullname: `${p.First_Name || ''} ${p.Last_Name || ''}`.trim() }));
       let opts = '<option value="">-- ຄົ້ນຫາ ແລະ ເລືອກຄົນເຈັບ --</option>';
       allPatientsList.forEach(p => { opts += `<option value="${p.id}">${p.id} - ${p.fullname}</option>`; });
       if (typeof jQuery !== 'undefined') { $('#a_patient').html(opts).trigger('change'); $('#pv_patient').html(opts).trigger('change'); }
-    }),
+    })(),
     supabaseClient.from('Organizations').select('Org_Code,Org_Name').eq('Status', 'Active').then(({ data }) => {
       activeOrgsList = [];
       let seenOpts = new Set();
@@ -775,8 +840,8 @@ window.fetchDashboardData = async function () {
       const { data: chunk, error } = await supabaseClient
         .from('Visits')
         .select('*')
-        .gte('Date', sDate + 'T00:00:00Z')
-        .lte('Date', eDate + 'T23:59:59Z')
+        .gte('Date', window.getUTCBoundary(sDate, false))
+        .lte('Date', window.getUTCBoundary(eDate, true))
         .range(startRange, startRange + 999);
       
       if (error) { 
@@ -1178,8 +1243,8 @@ window._fetchReportData = async function (sDate, eDate) {
     while (true) {
       const { data: chunk, error: vError } = await supabaseClient.from('Visits')
         .select('*')
-        .gte('Date', sDate + 'T00:00:00Z')
-        .lte('Date', eDate + 'T23:59:59Z')
+        .gte('Date', window.getUTCBoundary(sDate, false))
+        .lte('Date', window.getUTCBoundary(eDate, true))
         .order('Date', { ascending: false })
         .range(startRange, startRange + 999);
       if (vError) throw vError;
@@ -1187,15 +1252,33 @@ window._fetchReportData = async function (sDate, eDate) {
       visitsInRange = visitsInRange.concat(chunk);
       if (chunk.length < 1000) break;
       startRange += 1000;
-      if (visitsInRange.length >= 10000) break;
+      if (visitsInRange.length >= 100000) break; // Increased safety cap for large datasets
     }
 
     // 2. Recover NULL or Invalid/Missing dates
-    const { data: visitsNull, error: nullError } = await supabaseClient.from('Visits').select('*').is('Date', null).limit(1000);
-    if (nullError) console.error("NULL date fetch error:", nullError);
-    
-    // 3. Recover ANY other missing rows by fetching the latest 2000 (just to be safe)
-    const { data: visitsLatest } = await supabaseClient.from('Visits').select('*').order('Visit_ID', { ascending: false }).limit(2000);
+    // 2. Recover NULL or Invalid/Missing dates (Paginated)
+    let visitsNull = [];
+    let startNull = 0;
+    while (true) {
+      const { data, error: nError } = await supabaseClient.from('Visits').select('*').is('Date', null).range(startNull, startNull + 999);
+      if (nError) throw nError;
+      if (!data || data.length === 0) break;
+      visitsNull = visitsNull.concat(data);
+      if (data.length < 1000) break;
+      startNull += 1000;
+    }
+
+    // 3. Fallback to latest records (Cap at 2,000)
+    let visitsLatest = [];
+    let startLatest = 0;
+    while (startLatest < 2000) {
+      const { data, error: lError } = await supabaseClient.from('Visits').select('*').order('Visit_ID', { ascending: false }).range(startLatest, startLatest + 999);
+      if (lError) throw lError;
+      if (!data || data.length === 0) break;
+      visitsLatest = visitsLatest.concat(data);
+      if (data.length < 1000) break;
+      startLatest += 1000;
+    }
 
     // Merge them all
     let rawVisits = [...(visitsInRange || []), ...(visitsNull || []), ...(visitsLatest || [])];
@@ -1345,6 +1428,10 @@ window.exportReportPDF = function () {
     document.body.classList.add('exporting-pdf');
     element.classList.add('pdf-export-mode');
     
+    // Define actionTh and actionTds here, as they are used in this scope
+    const actionTh = element.querySelector('th:last-child');
+    const actionTds = element.querySelectorAll('td:last-child');
+
     if (actionTh) actionTh.style.display = 'none';
     actionTds.forEach(td => td.style.display = 'none');
     
@@ -1508,13 +1595,21 @@ window.viewReportDetail = function (i) {
 
 window.generateNextPatientID = async function () {
   try {
-    const { data, error } = await supabaseClient
-      .from('Patients')
-      .select('Patient_ID');
+    let data = [];
+    let startIdx = 0;
+    let maxNum = 0; // Initialize maxNum here
+    while (true) {
+      const { data: chunk, error: pError } = await supabaseClient
+        .from('Patients')
+        .select('Patient_ID')
+        .range(startIdx, startIdx + 999);
+      if (pError || !chunk || chunk.length === 0) break;
+      data = data.concat(chunk);
+      if (chunk.length < 1000) break;
+      startIdx += 1000;
+    }
 
-    if (error) throw error;
-
-    let maxNum = 0;
+    if (typeof(pError) !== 'undefined' && pError) throw pError;
     if (data && data.length > 0) {
       data.forEach(row => {
         if (row.Patient_ID && row.Patient_ID.startsWith('LXH')) {
@@ -1612,13 +1707,28 @@ window.initPatientTable = async function () {
   $('#patientTable tbody').html('<tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    // ດຶງຂໍ້ມູນຈາກ Supabase ແທນ google.script.run
-    const { data, error } = await supabaseClient
-      .from('Patients')
-      .select('*')
-      .order('Patient_ID', { ascending: false }); // ລຽງລຳດັບຄົນເຈັບໃໝ່ລ່າສຸດຂຶ້ນກ່ອນ
+    // Use true recursive pagination to fetch ALL patients
+    let data = [];
+    let startRange = 0;
+    while (true) {
+      const { data: chunk, error: vError } = await supabaseClient
+        .from('Patients')
+        .select('*')
+        .order('Patient_ID', { ascending: false })
+        .range(startRange, startRange + 999);
+      
+      if (vError) throw vError;
+      if (!chunk || chunk.length === 0) break;
+      data = data.concat(chunk);
+      console.log(`Loading patients chunk: ${data.length}...`);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+      if (data.length > 50000) break; // Extreme safety cap
+    }
 
-    if (error) throw error;
+    console.log(`Successfully loaded ${data.length} patients from Supabase`);
+
+    console.log(`Loaded ${data?.length || 0} patients from Supabase (Total in DB: ${data?.length || 0})`);
 
     $('#patientTable tbody').empty();
 
@@ -1642,8 +1752,16 @@ window.initPatientTable = async function () {
                           <button class="btn btn-sm btn-danger shadow-sm" title="ລຶບ" onclick="window.delPatient('${r.Patient_ID}')"><i class="fas fa-trash"></i></button>
                         </div>`;
 
+      // Normalize date for sorting (handles DD/MM/YYYY and YYYY-MM-DD)
+      let rawDate = r.Registration_Date || '';
+      let sortDate = rawDate;
+      if (rawDate.includes('/')) {
+        let [d, m, y] = rawDate.split('/');
+        sortDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+
       h += `<tr>
-                    <td class="text-muted small">${r.Registration_Date || '-'}</td>
+                    <td class="text-muted small" data-order="${sortDate}">${rawDate || '-'}</td>
                     <td class="text-muted small">${r.Time || '-'}</td>
                     <td class="text-primary fw-bold">${r.Patient_ID || '-'}</td>
                     <td class="fw-bold">${fullname}</td>
@@ -1660,7 +1778,7 @@ window.initPatientTable = async function () {
     $('#patientTable').DataTable({
       responsive: true,
       pageLength: 10,
-      order: [[0, "desc"], [1, "desc"]],
+      order: [[2, "desc"]],
       language: {
         search: "ຄົ້ນຫາ:",
         lengthMenu: "ສະແດງ _MENU_",
@@ -2129,9 +2247,9 @@ window._fetchTriageQueue = async function (sDate, eDate) {
     while (true) {
       const { data: chunk, error: vError } = await supabaseClient.from('Visits')
         .select('*')
-        .gte('Date', sDate + 'T00:00:00Z')
-        .lte('Date', eDate + 'T23:59:59Z')
-        .order('Date', { ascending: true })
+        .gte('Date', window.getUTCBoundary(sDate, false))
+        .lte('Date', window.getUTCBoundary(eDate, true))
+        .order('Date', { ascending: false })
         .range(startRange, startRange + 999);
       
       if (vError) throw vError;
@@ -2139,7 +2257,6 @@ window._fetchTriageQueue = async function (sDate, eDate) {
       visits = visits.concat(chunk);
       if (chunk.length < 1000) break;
       startRange += 1000;
-      if (visits.length >= 10000) break; // Hard safety cap
     }
 
     if (visits.length === 0) return [];
@@ -2206,9 +2323,9 @@ window._fetchOpdQueue = async function (sDate, eDate) {
     let startRange = 0;
     while (true) {
       const { data: chunk, error } = await supabaseClient.from('Visits').select('*')
-        .gte('Date', sDate + 'T00:00:00Z')
-        .lte('Date', eDate + 'T23:59:59Z')
-        .order('Date', { ascending: true })
+        .gte('Date', window.getUTCBoundary(sDate, false))
+        .lte('Date', window.getUTCBoundary(eDate, true))
+        .order('Date', { ascending: false }) // Changed to descending
         .range(startRange, startRange + 999);
 
       if (error) { console.error("OPD Fetch Range Error:", error); break; }
@@ -2216,22 +2333,39 @@ window._fetchOpdQueue = async function (sDate, eDate) {
       visitsInRange = visitsInRange.concat(chunk);
       if (chunk.length < 1000) break;
       startRange += 1000;
-      if (visitsInRange.length >= 5000) break; // Safety cap
+      if (visitsInRange.length >= 100000) break; // Increased safety cap
     }
 
     // 2. Fallbacks (only if range is empty)
     let rawVisits = visitsInRange || [];
     if (rawVisits.length === 0) {
-      // Recover NULL or Invalid/Missing dates
-      const { data: visitsNull } = await supabaseClient.from('Visits').select('*').is('Date', null).limit(100);
+      // Recover NULL or Invalid/Missing dates (Paginated)
+      let visitsNull = [];
+      let startNull = 0;
+      while (true) {
+        const { data, error } = await supabaseClient.from('Visits').select('*').is('Date', null).range(startNull, startNull + 999);
+        if (error) break;
+        if (!data || data.length === 0) break;
+        visitsNull = visitsNull.concat(data);
+        if (data.length < 1000) break;
+        startNull += 1000;
+      }
       
-      // Recover ONLY active patients (Waiting/Calling) who might be "lost" or just passed Triage
-      // We don't want to show 'Closed' records in the fallback as it clutters the view.
-      const { data: visitsActive } = await supabaseClient.from('Visits')
-        .select('*')
-        .in('Status', ['Waiting OPD', 'Calling OPD', 'Waiting Lab', 'Calling Lab'])
-        .order('created_at', { ascending: false })
-        .limit(200);
+      // Recover ONLY active patients (Waiting/Calling) (Paginated)
+      let visitsActive = [];
+      let startActive = 0;
+      while (startActive < 1000) { // Limit to 1000 for dashboard performance
+        const { data, error } = await supabaseClient.from('Visits')
+          .select('*')
+          .in('Status', ['Waiting OPD', 'Calling OPD', 'Waiting Lab', 'Calling Lab'])
+          .order('created_at', { ascending: false })
+          .range(startActive, startActive + 999);
+        if (error) break;
+        if (!data || data.length === 0) break;
+        visitsActive = visitsActive.concat(data);
+        if (data.length < 1000) break;
+        startActive += 1000;
+      }
 
       rawVisits = [...(visitsNull || []), ...(visitsActive || [])];
     }
@@ -2289,6 +2423,7 @@ window._fetchOpdQueue = async function (sDate, eDate) {
         dischargeStatus: r.Discharge_Status, doctor: r.Doctor_Name,
         nurse: r.Nurse_Name,
         symptoms: r.Symptoms, bp: r.BP, temp: r.Temp, weight: r.Weight, height: r.Height,
+        bmi: r.BMI, pulse: r.Pulse, spo2: r.SpO2,
         pe: r.Physical_Exam, diagnosis: r.Diagnosis, advice: r.Advice, followup: r.Follow_Up,
         labOrdersStr: r.Lab_Orders_JSON, prescriptionStr: r.Prescription_JSON,
         site: r.Site, type: r.Visit_Type, services: r.Services_List
@@ -2381,6 +2516,7 @@ window.viewTriage = function (i) {
             ${makeStat('<i class="fas fa-lungs me-1"></i> SpO2', r.spo2 ? r.spo2 + ' %' : null, null, parseFloat(r.spo2) < 95 ? 'danger' : 'success')}
             ${makeStat('<i class="fas fa-weight me-1"></i> Weight', r.weight, 'kg', 'secondary')}
             ${makeStat('<i class="fas fa-ruler-vertical me-1"></i> Height', r.height, 'cm', 'secondary')}
+            ${makeStat('<i class="fas fa-calculator me-1"></i> BMI', r.bmi, null, 'primary')}
         </div>
         ${r.symptoms ? `<div class="alert alert-light border mt-2 py-2"><b><i class="fas fa-comment-medical text-danger me-1"></i> ອາການ (CC):</b> ${r.symptoms}</div>` : ''}
     ` : `<div class="text-center py-4">
@@ -2412,7 +2548,7 @@ window.viewTriage = function (i) {
                 ${vitalsHtml}
             </div>`,
     width: '600px',
-    confirmButtonText: isDone ? '<i class="fas fa-edit me-1"></i> แก้ไข' : '<i class="fas fa-stethoscope me-1"></i> ວັດແທກຕອນນີ້',
+    confirmButtonText: isDone ? '<i class="fas fa-edit me-1"></i> ແກ້ໄຂ' : '<i class="fas fa-stethoscope me-1"></i> ວັດແທກຕອນນີ້',
     confirmButtonColor: isDone ? '#0ea5e9' : '#ef4444',
     showCancelButton: true,
     cancelButtonText: 'ປິດ',
@@ -2571,7 +2707,10 @@ window.viewEMR = function (i) {
                 <b><i class="fas fa-heartbeat text-danger"></i> Vitals:</b> 
                 BP: <span class="text-primary fw-bold">${q.bp || '-'}</span> | 
                 Temp: <span class="text-danger fw-bold">${q.temp ? q.temp + ' °C' : '-'}</span> | 
-                Wt: <span class="text-success fw-bold">${q.weight ? q.weight + ' kg' : '-'}</span>
+                Wt: <span class="text-success fw-bold">${q.weight ? q.weight + ' kg' : '-'}</span> |
+                Ht: <span class="text-info fw-bold">${q.height ? q.height + ' cm' : '-'}</span> |
+                SpO2: <span class="text-primary fw-bold">${q.spo2 ? q.spo2 + ' %' : '-'}</span> |
+                Pulse: <span class="text-danger fw-bold">${q.pulse ? q.pulse + ' bpm' : '-'}</span>
             </div>
             <p><b><i class="fas fa-search text-dark"></i> ຜົນການກວດ (PE):</b><br> ${q.pe || '-'}</p>
             <p><b><i class="fas fa-stethoscope text-danger"></i> ການວິນິດໄສ (Dx):</b><br> <span class="text-danger fw-bold">${q.diagnosis || '-'}</span></p>
@@ -2690,6 +2829,9 @@ window.openEMR = function (i) {
   }
 
   $('#emrWeight').text(q.weight ? q.weight + " kg" : "-");
+  $('#emrHeight').text(q.height ? q.height + " cm" : "-");
+  $('#emrPulse').text(q.pulse ? q.pulse + " bpm" : "-");
+  $('#emrSpo2').text(q.spo2 ? q.spo2 + " %" : "-");
   $('#emrPE').val(q.pe || '');
   $('#emrDiagnosis').val(q.diagnosis || '');
   $('#emrAdvice').val(q.advice || '');
@@ -2920,20 +3062,21 @@ window.loadAppointments = async function () {
 
   try {
     // Fetch all columns to see what's available
-    const { data: r, error } = await supabaseClient.from('Appointments').select('*').order('Appt_Date', { ascending: true });
-
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
-      return;
+    let r = [];
+    let startRange = 0;
+    while (true) {
+      const { data: chunk, error: apptError } = await supabaseClient
+        .from('Appointments')
+        .select('*')
+        .order('Appt_Date', { ascending: false })
+        .range(startRange, startRange + 999);
+      if (apptError) throw apptError;
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
     }
 
-    console.log('Raw appointments data:', r);
-    if (r && r.length > 0) {
-      console.log('First appointment keys:', Object.keys(r[0]));
-    }
-
-    // Destroy DataTable again before rebuilding
     if ($.fn.DataTable.isDataTable('#apptTable')) {
       $('#apptTable').DataTable().destroy();
     }
@@ -3241,8 +3384,16 @@ window.loadVaccineMaster = async function () {
   $('#vacMasterTable tbody').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: r, error } = await supabaseClient.from('Vaccines_Master').select('*');
-    if (error) { console.error('Error:', error); Swal.fire('Error', error.message, 'error'); return; }
+    let r = [];
+    let startRange = 0;
+    while (true) {
+      const { data: chunk, error: vError } = await supabaseClient.from('Vaccines_Master').select('*').order('Vac_ID', { ascending: false }).range(startRange, startRange + 999);
+      if (vError) throw vError;
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
 
     vaccinesMasterList = r || [];
     if ($.fn.DataTable.isDataTable('#vacMasterTable')) $('#vacMasterTable').DataTable().destroy();
@@ -3281,8 +3432,22 @@ window.loadPatientVaccines = async function () {
   $('#patientVacTable tbody').html('<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-success spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: r, error } = await supabaseClient.from('Patient_Vaccines').select('*').order('Date_Given', { ascending: false });
-    if (error) { console.error('Error:', error); Swal.fire('Error', error.message, 'error'); return; }
+    let r = [];
+    let startRange = 0;
+    let vacErrorData = null; // Renamed to avoid conflict with global 'error'
+    while (true) {
+      const { data: chunk, error: vacError } = await supabaseClient
+        .from('Patient_Vaccines')
+        .select('*')
+        .order('Date_Given', { ascending: false })
+        .range(startRange, startRange + 999);
+      if (vacError) { vacErrorData = vacError; break; }
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
+    if (vacErrorData) { console.error('Error:', vacErrorData); Swal.fire('Error', vacErrorData.message, 'error'); return; }
 
     if ($.fn.DataTable.isDataTable('#patientVacTable')) $('#patientVacTable').DataTable().destroy();
     let h = '';
@@ -3495,14 +3660,17 @@ window.loadDrugsMaster = async function () {
   $('#drugTable tbody').html('<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-success spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: r, error } = await supabaseClient.from('Drugs_Master').select('*');
-
-    // 🚨 ດັກຈັບ Error ຕາມ Antigravity ສັ່ງ
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
-      return;
+    let r = [];
+    let startRange = 0;
+    while (true) {
+      const { data: chunk, error: dError } = await supabaseClient.from('Drugs_Master').select('*').order('Drug_ID', { ascending: false }).range(startRange, startRange + 999);
+      if (dError) throw dError;
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
     }
+
 
     if ($.fn.DataTable.isDataTable('#drugTable')) $('#drugTable').DataTable().destroy();
     let h = '';
@@ -3575,13 +3743,18 @@ window.loadLabsMaster = async function () {
   $('#labTable tbody').html('<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: r, error } = await supabaseClient.from('Labs_Master').select('*');
-
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
-      return;
+    let r = [];
+    let startRange = 0;
+    while (true) {
+      const { data: chunk, error: lError } = await supabaseClient.from('Labs_Master').select('*').order('Lab_ID', { ascending: false }).range(startRange, startRange + 999);
+      if (lError) throw lError;
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
     }
+
+
 
     if ($.fn.DataTable.isDataTable('#labTable')) $('#labTable').DataTable().destroy();
     let h = '';
@@ -3654,12 +3827,25 @@ window.loadUsers = async function () {
   $('#userTable tbody').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-dark spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: u, error } = await supabaseClient.from('Users').select('*');
+    let u = [];
+    let startRange = 0;
+    let generalError = null; // Declare a general error variable
+    while (true) {
+      const { data: chunk, error: uError } = await supabaseClient.from('Users').select('*').order('ID', { ascending: false }).range(startRange, startRange + 999);
+      if (uError) {
+        generalError = uError; // Assign specific error to general error
+        break; // Break the loop to handle error outside
+      }
+      if (!chunk || chunk.length === 0) break;
+      u = u.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
 
     // 🚨 ດັກຈັບ Error ຕາມ Antigravity
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
+    if (generalError) { // Use the general error variable
+      console.error('Error:', generalError);
+      Swal.fire('Error', generalError.message, 'error');
       return;
     }
 
@@ -3851,10 +4037,21 @@ window.resetMasterDefaults = async function () {
 
 window.loadMasterDataGlobal = async function () {
   try {
-    const { data, error } = await supabaseClient.from('MasterData').select('*');
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
+    let data = [];
+    let startRange = 0;
+    let locErrorData = null;
+    while (true) {
+      const { data: chunk, error: locError } = await supabaseClient.from('MasterData').select('*').order('ID', { ascending: false }).range(startRange, startRange + 999);
+      if (locError) { locErrorData = locError; break; }
+      if (!chunk || chunk.length === 0) break;
+      data = data.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
+
+    if (locErrorData) {
+      console.error('Error:', locErrorData);
+      Swal.fire('Error', locErrorData.message, 'error');
       return;
     }
 
@@ -3945,12 +4142,25 @@ window.loadOrgs = async function () {
   $('#orgTable tbody').html('<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: orgs, error } = await supabaseClient.from('Organizations').select('*');
+    let orgs = [];
+    let startRange = 0;
+    let generalError = null; // Declare a general error variable
+    while (true) {
+      const { data: chunk, error: oError } = await supabaseClient.from('Organizations').select('*').order('Org_ID', { ascending: false }).range(startRange, startRange + 999);
+      if (oError) {
+        generalError = oError; // Assign specific error to general error
+        break; // Break the loop to handle error outside
+      }
+      if (!chunk || chunk.length === 0) break;
+      orgs = orgs.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
 
     // 🚨 ດັກຈັບ Error ຕາມ Antigravity
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
+    if (generalError) { // Use the general error variable
+      console.error('Error:', generalError);
+      Swal.fire('Error', generalError.message, 'error');
       return;
     }
 
@@ -4103,11 +4313,21 @@ window.loadLocationsMasterView = async function () {
   $('#locationTable tbody').html('<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: r, error } = await supabaseClient.from('Locations').select('*');
+    let r = [];
+    let startRange = 0;
+    let locErrorData = null;
+    while (true) {
+      const { data: chunk, error: locError } = await supabaseClient.from('Locations').select('*').order('ID', { ascending: false }).range(startRange, startRange + 999);
+      if (locError) { locErrorData = locError; break; }
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
 
-    if (error) {
-      console.error('Error:', error);
-      Swal.fire('Error', error.message, 'error');
+    if (locErrorData) {
+      console.error('Error:', locErrorData);
+      Swal.fire('Error', locErrorData.message, 'error');
       return;
     }
 
@@ -4214,8 +4434,16 @@ window.loadServicesMasterView = async function () {
   $('#serviceTable tbody').html('<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-info spinner-border-sm"></div> ກຳລັງໂຫຼດ...</td></tr>');
 
   try {
-    const { data: r, error } = await supabaseClient.from('Service_Lists').select('*');
-    if (error) { console.error('Error:', error); Swal.fire('Error', error.message, 'error'); return; }
+    let r = [];
+    let startRange = 0;
+    while (true) {
+      const { data: chunk, error: sError } = await supabaseClient.from('Service_Lists').select('*').order('ID', { ascending: false }).range(startRange, startRange + 999);
+      if (sError) throw sError;
+      if (!chunk || chunk.length === 0) break;
+      r = r.concat(chunk);
+      if (chunk.length < 1000) break;
+      startRange += 1000;
+    }
 
     servicesDataStore = r || [];
     if ($.fn.DataTable.isDataTable('#serviceTable')) $('#serviceTable').DataTable().destroy();
@@ -4698,8 +4926,8 @@ window.loadActivityLog = async function () {
     let query = supabaseClient
       .from('activity_logs')
       .select('*')
-      .gte('timestamp', sDate + 'T00:00:00Z')
-      .lte('timestamp', eDate + 'T23:59:59Z')
+      .gte('timestamp', window.getUTCBoundary(sDate, false))
+      .lte('timestamp', window.getUTCBoundary(eDate, true))
       .order('timestamp', { ascending: false })
       .limit(500);
 
@@ -4821,14 +5049,26 @@ window.initPublicQueueView = async function () {
 };
 
 window.refreshPublicQueueDisplay = async function () {
-  let today = new Date().toISOString().split('T')[0];
-  const { data: visits, error } = await supabaseClient.from('Visits')
-    .select('*')
-    .gte('Date', today + 'T00:00:00Z')
-    .lte('Date', today + 'T23:59:59Z')
-    .order('Date', { ascending: true });
+  let today = window.getLocalStr(new Date());
+  let visits = [];
+  let startRange = 0;
+  while (true) {
+    const { data: chunk, error } = await supabaseClient.from('Visits')
+      .select('*')
+      .gte('Date', window.getUTCBoundary(today, false))
+      .lte('Date', window.getUTCBoundary(today, true))
+      .order('Date', { ascending: true })
+      .range(startRange, startRange + 999);
 
-  if (error) return console.error('refreshPublicQueueDisplay error:', error);
+    if (error) {
+      console.error('refreshPublicQueueDisplay error:', error);
+      break;
+    }
+    if (!chunk || chunk.length === 0) break;
+    visits = visits.concat(chunk);
+    if (chunk.length < 1000) break;
+    startRange += 1000;
+  }
 
   let opdWait = [];
   let triageWait = [];
